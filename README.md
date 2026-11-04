@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| 状态 | v0.1.0 — 2026-03 完成，按个人使用需求实现 |
+| 状态 | v0.1.0 — 2026-03 完成，按个人使用需求实现，**不再主动开发** |
 | 环境 | macOS + [Übersicht](https://tracesof.net/uebersicht/) |
 | 依赖 | 无（纯 bash + AppleScript + 系统自带 `python3`） |
 | 许可 | MIT |
