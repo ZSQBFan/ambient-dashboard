@@ -10,6 +10,8 @@
 | 背景 | 纯黑，不透视壁纸与桌面小组件（`SOLID_BG` 可切回模糊大图氛围背景） |
 | 许可 | MIT |
 
+![ambient-dashboard](docs/screenshot.png)
+
 
 ## 预览内容
 
@@ -70,6 +72,20 @@ cp ~/Pictures/*.jpg "$HOME/Library/Application Support/Übersicht/widgets/ambien
 - 横向图观感最好（≥1600×900），竖图会被 `object-fit: cover` 裁切
 - 放进去不用重装，Übersicht 下次刷新就会轮播
 - 支持 jpg / jpeg / png / webp / gif / avif / heic / tiff / bmp
+
+### 图片为什么不用 `file://`
+
+Übersicht 不是用 `file://` 加载组件的，它在本地起一个 HTTP 服务（默认 `http://127.0.0.1:41416`）并把 widgets 目录挂在服务器根路径上。所以页面里的 `<img src="file:///...">` 会被 WebKit 拦掉，静默渲染成空白——组件看起来一切正常，右侧大图就是不出图。
+
+`get-data.sh` 因此输出两个字段：
+
+| 字段 | 内容 | 谁用 |
+|---|---|---|
+| `images` | 绝对路径 `/Users/.../slideshow/a.jpg` | 脚本调试、别的工具 |
+| `imageUrls` | 服务器相对路径 `/ambient-dashboard/slideshow/a.jpg` | 组件实际渲染用这个 |
+
+专辑封面在 widgets 目录之外（`TMPDIR` 缓存），HTTP 服务够不到，所以改用 `artData`（`data:image/jpeg;base64,...` 内联）。封面按「歌手+歌名」缓存成 `art_<md5>.jpg`，切歌时不会闪上一首的图。
+
 
 ## 可调项
 

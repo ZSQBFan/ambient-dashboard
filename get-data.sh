@@ -12,7 +12,10 @@ TO() {
 # ─── Per-user scratch dir (avoids /tmp collisions between widget instances) ──
 UB_DIR="${TMPDIR:-/tmp}/uebersicht-ambient"
 mkdir -p "$UB_DIR"
-UB_ART="$UB_DIR/ub_art.jpg"
+# Artwork path is derived per track further down (see "Now Playing"), so that a
+# new track never shows the previous track's cover while this script is still
+# extracting the fresh one.
+UB_ART=""
 
 # ─── Time & Date ─────────────────────────────────────────────────────────────
 TIME=$(LC_ALL=C date "+%H:%M")
@@ -51,7 +54,14 @@ if [[ "$NP_RESULT" != "none" && -n "$NP_RESULT" ]]; then
   ARTIST=$( echo "$NP_RESULT" | awk -F'[|][|][|]' '{print $3}')
   ALBUM=$(  echo "$NP_RESULT" | awk -F'[|][|][|]' '{print $4}')
   if [[ "$PLAYER" == "Music" ]]; then
-    (TO 3 osascript - "$UB_ART" 2>/dev/null <<'AS'
+    # Cache the cover per track. Hitting the cache avoids both the 8s gap after
+    # a track change and the stale-cover flash while osascript is still writing.
+    ART_KEY=$(printf '%s|%s|%s' "$PLAYER" "$TRACK" "$ARTIST" | md5 -q)
+    UB_ART="$UB_DIR/art_$ART_KEY.jpg"
+    if [ -s "$UB_ART" ]; then
+      ART_PATH="$UB_ART"
+    else
+      (TO 3 osascript - "$UB_ART" 2>/dev/null <<'AS'
 on run argv
   set dst to item 1 of argv
   tell application "Music"
@@ -65,10 +75,11 @@ on run argv
   end tell
 end run
 AS
-    ) &
+      ) &
+    fi
   fi
-  [ -f $UB_DIR/ub_art.jpg ] && ART_PATH="$UB_DIR/ub_art.jpg"
 fi
+
 
 # ─── Memory pressure (官方指标，后台异步更新，本次读上次缓存) ─────────────────
 MEM_PRESSURE_CACHE="$UB_DIR/ub_mem_pressure.txt"
@@ -146,18 +157,44 @@ mv $UB_DIR/ub_hist_new.json "$HIST" 2>/dev/null
 HISTORY=$(cat "$HIST" 2>/dev/null || echo '{"cpu":[],"mem":[],"ni":[],"no":[]}')
 
 # ─── Slideshow images ─────────────────────────────────────────────────────────
+# Übersicht does not load widgets over file:// — it serves them from a local
+# HTTP server (http://127.0.0.1:<port>) and mounts the widgets folder statically
+# at the server root. So images must be addressed as /<widget-folder>/<file>,
+# not as file:// URLs: a file:// <img> from an http page is blocked by WebKit and
+# silently renders nothing. `images` keeps the absolute paths (useful for
+# scripting); `imageUrls` is what the widget actually renders.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+WIDGET_NAME="$(basename "$SCRIPT_DIR")"
 SLIDE_DIR="$SCRIPT_DIR/slideshow"
 IMAGES="[]"
+IMAGE_URLS="[]"
 if [ -d "$SLIDE_DIR" ]; then
-  IMAGES=$(find "$SLIDE_DIR" -maxdepth 1 \
+  SLIDE_FILES=$(find "$SLIDE_DIR" -maxdepth 1 \
     \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \
        -o -iname "*.webp" -o -iname "*.gif"  -o -iname "*.avif" \
        -o -iname "*.heic" -o -iname "*.heif" -o -iname "*.tiff" \
        -o -iname "*.tif"  -o -iname "*.bmp" \) \
-    | sort | python3 -c \
-    "import sys,json; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))" \
-    2>/dev/null || echo "[]")
+    | sort)
+  if [ -n "$SLIDE_FILES" ]; then
+    IMAGES=$(printf '%s\n' "$SLIDE_FILES" | python3 -c \
+      "import sys,json; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))" \
+      2>/dev/null || echo "[]")
+    IMAGE_URLS=$(printf '%s\n' "$SLIDE_FILES" | WIDGET_NAME="$WIDGET_NAME" python3 -c \
+      "import sys,json,os,urllib.parse as u
+name=u.quote(os.environ['WIDGET_NAME'])
+print(json.dumps(['/'+name+'/slideshow/'+u.quote(os.path.basename(l.strip()))
+                  for l in sys.stdin if l.strip()]))" \
+      2>/dev/null || echo "[]")
+  fi
+fi
+
+# ─── Artwork as a data: URL ───────────────────────────────────────────────────
+# Same reason as the slideshow: the cover lives outside the widgets folder, where
+# the local HTTP server cannot reach it. Inlining it sidesteps the whole
+# file://-from-http problem. Covers are a few tens of KB, so the cost is small.
+ART_DATA=""
+if [ -n "$ART_PATH" ] && [ -s "$ART_PATH" ]; then
+  ART_DATA="data:image/jpeg;base64,$(base64 < "$ART_PATH" | tr -d '\n')"
 fi
 
 # ─── JSON ─────────────────────────────────────────────────────────────────────
@@ -171,6 +208,7 @@ cat <<JSON
   "artist":      "$(esc "$ARTIST")",
   "album":       "$(esc "$ALBUM")",
   "artPath":     "$(esc "$ART_PATH")",
+  "artData":     "$(esc "$ART_DATA")",
   "player":      "$(esc "$PLAYER")",
   "cpu":         $CPU,
   "memPressure": $MEM_PRESSURE,
@@ -179,6 +217,7 @@ cat <<JSON
   "netInKB":     $NET_IN_KB,
   "netOutKB":    $NET_OUT_KB,
   "history":     $HISTORY,
-  "images":      $IMAGES
+  "images":      $IMAGES,
+  "imageUrls":   $IMAGE_URLS
 }
 JSON

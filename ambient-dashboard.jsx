@@ -148,18 +148,23 @@ export const render = ({ output, error }) => {
 
   const {
     time="--:--", date="---", year="",
-    track="", artist="", album="", artPath="", player="",
+    track="", artist="", album="", artPath="", artData="", player="",
     cpu=0, memPressure=0, memUsed="?", memTotal="?",
-    netInKB=0, netOutKB=0, history={}, images=[],
+    netInKB=0, netOutKB=0, history={}, images=[], imageUrls=[],
   } = d;
 
   const hist     = history || {};
   const hasTrack = Boolean(track);
-  const artUrl   = artPath ? fileUrl(artPath) + `?_t=${Math.floor(Date.now()/16000)}` : "";
+  // artData is a data: URL supplied by get-data.sh and always wins — the cover
+  // file lives outside the widgets folder, so it is not reachable over the
+  // local HTTP server, and a file:// URL is blocked from that page.
+  const artUrl   = artData || (artPath ? fileUrl(artPath) + `?_t=${Math.floor(Date.now()/16000)}` : "");
   const [hh, mm] = (time||"--:--").split(":");
   const slideIdx = images.length
     ? Math.floor(Date.now()/1000/SLIDE_SEC) % images.length : 0;
-  const slideUrl = images.length ? fileUrl(images[slideIdx]) : null;
+  // Same for the slideshow: imageUrls are server-relative (/<widget>/slideshow/x.jpg);
+  // images[] holds absolute paths only as a fallback for older payloads.
+  const slideUrl = images.length ? (imageUrls[slideIdx] || fileUrl(images[slideIdx])) : null;
 
   return (
     <div className={root}>
