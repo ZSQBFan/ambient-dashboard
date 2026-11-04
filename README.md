@@ -6,13 +6,13 @@
 |---|---|
 | 状态 | v0.1.0 — 2026-03 完成，按个人使用需求实现，**不再主动开发** |
 | 环境 | macOS + [Übersicht](https://tracesof.net/uebersicht/) |
-| 依赖 | 无（纯 bash + AppleScript + 系统自带 `python3`） |
+| 依赖 | 无第三方库（bash + AppleScript + 系统自带 `python3`）；字体走 Google Fonts CDN，不可达时回退系统字体 |
 | 许可 | MIT |
 
 
 ## 预览内容
 
-- 🕐 **大字时钟** — 秒级更新，带呼吸感冒号动画
+- 🕐 **大字时钟** — 数字每 8 秒刷新（受 `refreshFrequency` 控制），冒号是 CSS 每 1 秒呼吸动画
 - 🎵 **Now Playing** — 专辑封面 + 歌名 + 歌手 + 专辑名 + 音频可视化条
   - 支持 Apple Music / Spotify
 - 📊 **系统状态** — CPU / 内存 / 磁盘（带进度条）/ 网络收发量
@@ -55,23 +55,17 @@ chmod +x \
 然后：菜单栏 Übersicht 图标 → **Refresh All Widgets**。
 定位到副屏：右键组件 → **Edit Position**，拖到副屏合适位置。
 
-## 自定义配置
+## 可调项
 
-打开 `ambient-dashboard.jsx`，修改顶部 CONFIG 区：
+组件没有配置块，尺寸是全屏自适应（`position: fixed; inset: 0`），换显示器不用改任何东西。
+真正常改的只有 `ambient-dashboard.jsx` 顶部两行：
 
-> 如果装到了非默认目录（用 `UBERSICHT_WIDGETS` 覆盖过），要把文件第 9 行的 `command` 路径一起改掉，
-> 否则组件跑的是默认路径下的脚本。
+| 位置 | 名字 | 默认 | 作用 |
+|---|---|---|---|
+| 第 9 行 | `refreshFrequency` | `8000` | 采集脚本执行间隔（ms）。时钟数字也受它控制——改成 `1000` 才是真正的秒级走字，代价是每秒起一个 `get-data.sh` 进程 |
+| 第 10 行 | `SLIDE_SEC` | `20` | 轮播每张图停留的秒数 |
 
-```js
-const CONFIG = {
-  width: "1920px",   // 副屏分辨率宽
-  height: "1080px",  // 副屏分辨率高
-  clockRefresh: 5000,  // 时钟刷新间隔(ms)
-  statsRefresh: 8000,  // 系统状态刷新间隔(ms)
-};
-```
-
----
+副屏分辨率不同也不影响布局；如果确实想让左侧卡片变宽，改 `leftPanel` 的 `width: 265px`。
 
 ## 颜色主题
 
@@ -108,6 +102,7 @@ const CONFIG = {
 - **临时文件**：历史曲线、内存采样、封面缓存在 `${TMPDIR}/uebersicht-ambient/` 下，
   不再写到 `/tmp` 固定文件名，避免多个实例互相覆盖。
 - 只测过单显示器 + 一块副屏；多屏不同缩放比例下卡片位置需要手动拖。
+- 字体（DM Serif Display / JetBrains Mono / Inter）从 `fonts.googleapis.com` 加载，大陆网络下通常拿不到，会回退到系统字体，大字号观感会明显不同。想固定观感就把字体文件放进 `assets/` 用 `@font-face` 引。
 
 ## 许可
 
