@@ -2,6 +2,18 @@
 
 深色氛围副屏组件，显示时钟、正在播放的音乐专辑封面，以及系统状态。
 
+![screenshot](docs/screenshot.png)
+
+> 一张 1920×1080 副屏截图。**发布前请补上这张图**——它是别人判断这个组件值不值得装的唯一依据。
+
+| | |
+|---|---|
+| 状态 | v0.1.0 — 2026-03 完成，按个人使用需求实现 |
+| 环境 | macOS + [Übersicht](https://tracesof.net/uebersicht/) |
+| 依赖 | 无（纯 bash + AppleScript + 系统自带 `python3`） |
+| 许可 | MIT |
+
+
 ## 预览内容
 
 - 🕐 **大字时钟** — 秒级更新，带呼吸感冒号动画
@@ -29,8 +41,12 @@ chmod +x \
 ```
 
 ### 4. 授权脚本权限（首次）
-- 打开 系统设置 → 隐私与安全 → 完全磁盘访问权限
-- 添加 Übersicht（或终端，如果手动测试脚本）
+
+- **完全磁盘访问权限**：系统设置 → 隐私与安全 → 完全磁盘访问权限 → 添加 Übersicht
+  （读取 Music 专辑封面缓存需要）
+- **自动化权限**：首次刷新时系统会弹窗询问「Übersicht 想要控制 System Events / Music」，
+  必须点允许。没有这一步，音乐区会一直是空的（`osascript` 返回空字符串）。
+  漏点了可以到 系统设置 → 隐私与安全 → 自动化 里补勾。
 
 ### 5. 刷新组件
 在菜单栏 Übersicht 图标 → Refresh All Widgets
@@ -79,3 +95,18 @@ const CONFIG = {
 
 **组件不在副屏上？**
 - 在 Übersicht 偏好设置中确认 "Display" 设置对应副屏编号
+
+---
+
+## 已知限制
+
+- **Spotify 不抓封面**：Spotify 的 AppleScript 接口不暴露 artwork 数据，只能显示歌名/歌手/专辑文字。
+- **`timeout` 依赖已移除**：macOS 不自带 `timeout`（那是 GNU coreutils）。脚本内置 `TO()` 包装，
+  优先用 `timeout`，其次 `gtimeout`，都没有就直接执行，因此在原生 macOS 上也能跑。
+- **临时文件**：历史曲线、内存采样、封面缓存在 `${TMPDIR}/uebersicht-ambient/` 下，
+  不再写到 `/tmp` 固定文件名，避免多个实例互相覆盖。
+- 只测过单显示器 + 一块副屏；多屏不同缩放比例下卡片位置需要手动拖。
+
+## 许可
+
+MIT，见 [LICENSE](LICENSE)。

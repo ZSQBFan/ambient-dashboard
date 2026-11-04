@@ -1,4 +1,18 @@
 #!/bin/bash
+# ─── Portable timeout shim ───────────────────────────────────────────────────
+# macOS ships no `timeout`; some setups have coreutils' `gtimeout`. Fall back to
+# running the command unwrapped so the widget still works on a stock Mac.
+TO() {
+  if command -v timeout  >/dev/null 2>&1; then timeout  "$@"
+  elif command -v gtimeout >/dev/null 2>&1; then gtimeout "$@"
+  else shift; "$@"
+  fi
+}
+
+# ─── Per-user scratch dir (avoids /tmp collisions between widget instances) ──
+UB_DIR="${TMPDIR:-/tmp}/uebersicht-ambient"
+mkdir -p "$UB_DIR"
+UB_ART="$UB_DIR/ub_art.jpg"
 
 # ─── Time & Date ─────────────────────────────────────────────────────────────
 TIME=$(LC_ALL=C date "+%H:%M")
@@ -8,7 +22,7 @@ YEAR=$(LC_ALL=C date "+%Y")
 # ─── Now Playing ─────────────────────────────────────────────────────────────
 TRACK="" ARTIST="" ALBUM="" ART_PATH="" PLAYER=""
 
-NP_RESULT=$(timeout 4 osascript 2>/dev/null <<'AS'
+NP_RESULT=$(TO 4 osascript 2>/dev/null <<'AS'
 tell application "System Events"
   set musicRunning   to (name of processes) contains "Music"
   set spotifyRunning to (name of processes) contains "Spotify"
@@ -37,24 +51,27 @@ if [[ "$NP_RESULT" != "none" && -n "$NP_RESULT" ]]; then
   ARTIST=$( echo "$NP_RESULT" | awk -F'[|][|][|]' '{print $3}')
   ALBUM=$(  echo "$NP_RESULT" | awk -F'[|][|][|]' '{print $4}')
   if [[ "$PLAYER" == "Music" ]]; then
-    (timeout 3 osascript 2>/dev/null <<'AS'
-tell application "Music"
-  try
-    set artData to data of artwork 1 of current track
-    set f to open for access POSIX file "/tmp/ub_art.jpg" with write permission
-    set eof of f to 0
-    write artData to f
-    close access f
-  end try
-end tell
+    (TO 3 osascript - "$UB_ART" 2>/dev/null <<'AS'
+on run argv
+  set dst to item 1 of argv
+  tell application "Music"
+    try
+      set artData to data of artwork 1 of current track
+      set f to open for access POSIX file dst with write permission
+      set eof of f to 0
+      write artData to f
+      close access f
+    end try
+  end tell
+end run
 AS
     ) &
   fi
-  [ -f /tmp/ub_art.jpg ] && ART_PATH="/tmp/ub_art.jpg"
+  [ -f $UB_DIR/ub_art.jpg ] && ART_PATH="$UB_DIR/ub_art.jpg"
 fi
 
 # ─── Memory pressure (官方指标，后台异步更新，本次读上次缓存) ─────────────────
-MEM_PRESSURE_CACHE="/tmp/ub_mem_pressure.txt"
+MEM_PRESSURE_CACHE="$UB_DIR/ub_mem_pressure.txt"
 
 # 启动后台更新（不阻塞主流程）
 (
@@ -75,7 +92,7 @@ CPU=$(ps -A -o %cpu 2>/dev/null | awk -v c="$CORES" \
 CPU=${CPU:-0}
 
 # ─── Memory used (for subtitle) ───────────────────────────────────────────────
-python3 - > /tmp/ub_mem.txt 2>/dev/null <<'PYEOF'
+python3 - > $UB_DIR/ub_mem.txt 2>/dev/null <<'PYEOF'
 import subprocess, re
 out   = subprocess.check_output(["vm_stat"], text=True)
 total = int(subprocess.check_output(["sysctl","-n","hw.memsize"], text=True).strip())
@@ -87,12 +104,12 @@ used = (p(r'Pages active') + p(r'Pages wired down') + p(r'occupied by compressor
 print(f'{used/1073741824:.1f}')
 print(f'{total/1073741824:.0f}')
 PYEOF
-MEM_USED_GB=$( sed -n '1p' /tmp/ub_mem.txt 2>/dev/null || echo '?')
-MEM_TOTAL_GB=$(sed -n '2p' /tmp/ub_mem.txt 2>/dev/null || echo '?')
+MEM_USED_GB=$( sed -n '1p' $UB_DIR/ub_mem.txt 2>/dev/null || echo '?')
+MEM_TOTAL_GB=$(sed -n '2p' $UB_DIR/ub_mem.txt 2>/dev/null || echo '?')
 
 # ─── Network (cached, no sleep) ───────────────────────────────────────────────
 NET_IN_KB=0; NET_OUT_KB=0
-NET_CACHE="/tmp/ub_net_cache.txt"
+NET_CACHE="$UB_DIR/ub_net_cache.txt"
 NET_IF=$(route get default 2>/dev/null | awk '/interface/{print $2}')
 if [ -n "$NET_IF" ]; then
   NOW_TS=$(date +%s)
@@ -112,8 +129,8 @@ if [ -n "$NET_IF" ]; then
 fi
 
 # ─── History ─────────────────────────────────────────────────────────────────
-HIST="/tmp/ub_history.json"
-python3 - > /tmp/ub_hist_new.json 2>/dev/null <<PYEOF
+HIST="$UB_DIR/ub_history.json"
+python3 - > $UB_DIR/ub_hist_new.json 2>/dev/null <<PYEOF
 import json
 try:    h = json.load(open("$HIST"))
 except: h = {"cpu":[],"mem":[],"ni":[],"no":[]}
@@ -122,10 +139,10 @@ h["cpu"] = push(h.get("cpu",[]), $CPU)
 h["mem"] = push(h.get("mem",[]), $MEM_PRESSURE)
 h["ni"]  = push(h.get("ni", []), $NET_IN_KB)
 h["no"]  = push(h.get("no", []), $NET_OUT_KB)
-with open("/tmp/ub_hist_new.json","w") as f: json.dump(h,f)
+with open("$UB_DIR/ub_hist_new.json","w") as f: json.dump(h,f)
 print(json.dumps(h))
 PYEOF
-mv /tmp/ub_hist_new.json "$HIST" 2>/dev/null
+mv $UB_DIR/ub_hist_new.json "$HIST" 2>/dev/null
 HISTORY=$(cat "$HIST" 2>/dev/null || echo '{"cpu":[],"mem":[],"ni":[],"no":[]}')
 
 # ─── Slideshow images ─────────────────────────────────────────────────────────

@@ -4,7 +4,8 @@
 
 import { React, css } from "uebersicht";
 
-export const command = `bash '/Volumes/叽叽叽/Übersicht/widgets/ambient-dashboard/get-data.sh'`;
+// Resolved at run time so the widget works wherever Übersicht is installed.
+export const command = `bash "$HOME/Library/Application Support/Übersicht/widgets/ambient-dashboard/get-data.sh"`;
 export const refreshFrequency = 8000;
 const SLIDE_SEC = 20;
 
