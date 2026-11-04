@@ -5,3 +5,6 @@
 *.log
 *.tmp
 .DS_Store
+
+# 截图要能进仓库（*.png 默认忽略）
+!docs/screenshot.png
