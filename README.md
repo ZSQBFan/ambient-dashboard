@@ -19,42 +19,48 @@
 
 ---
 
-## 安装步骤
+## 安装
 
-### 1. 安装 Übersicht
-https://tracesof.net/uebersicht/
+### 方式 A：脚本（推荐）
 
-### 2. 复制组件文件夹
+从 [Releases](../../releases/latest) 下载 `ambient-dashboard-v0.1.0.widget.zip`，解压后进入该目录：
+
+```bash
+bash install.sh
+```
+
+脚本会把组件复制到 `~/Library/Application Support/Übersicht/widgets/ambient-dashboard`，
+已有的旧版本会先备份成 `ambient-dashboard.bak.<时间戳>`，不会静默覆盖。
+
+### 方式 B：手动
+
 ```bash
 cp -r ambient-dashboard \
   ~/Library/Application\ Support/Übersicht/widgets/
-```
-
-### 3. 给脚本添加执行权限
-```bash
 chmod +x \
   ~/Library/Application\ Support/Übersicht/widgets/ambient-dashboard/get-data.sh
 ```
 
-### 4. 授权脚本权限（首次）
-
-- **完全磁盘访问权限**：系统设置 → 隐私与安全 → 完全磁盘访问权限 → 添加 Übersicht
-  （读取 Music 专辑封面缓存需要）
-- **自动化权限**：首次刷新时系统会弹窗询问「Übersicht 想要控制 System Events / Music」，
-  必须点允许。没有这一步，音乐区会一直是空的（`osascript` 返回空字符串）。
-  漏点了可以到 系统设置 → 隐私与安全 → 自动化 里补勾。
-
-### 5. 刷新组件
-在菜单栏 Übersicht 图标 → Refresh All Widgets
-
-### 6. 定位到副屏
-右键组件 → Edit Position，拖拽到副屏合适位置
-
 ---
+
+## 首次运行：两次授权
+
+缺任何一项，音乐区或封面就是空的 —— 这不是 bug。
+
+- **完全磁盘访问权限**：系统设置 → 隐私与安全 → 完全磁盘访问权限 → 添加 **Übersicht**
+  （读 Music 的专辑封面缓存需要）
+- **自动化权限**：首次刷新时系统会弹窗「Übersicht 想要控制 System Events / Music」，必须点**允许**。
+  漏点了到 系统设置 → 隐私与安全 → 自动化 里补勾。
+
+然后：菜单栏 Übersicht 图标 → **Refresh All Widgets**。
+定位到副屏：右键组件 → **Edit Position**，拖到副屏合适位置。
 
 ## 自定义配置
 
 打开 `ambient-dashboard.jsx`，修改顶部 CONFIG 区：
+
+> 如果装到了非默认目录（用 `UBERSICHT_WIDGETS` 覆盖过），要把文件第 9 行的 `command` 路径一起改掉，
+> 否则组件跑的是默认路径下的脚本。
 
 ```js
 const CONFIG = {

@@ -4,3 +4,4 @@
 *.svg
 *.log
 *.tmp
+.DS_Store
