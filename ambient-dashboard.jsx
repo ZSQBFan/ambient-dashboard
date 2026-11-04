@@ -9,6 +9,9 @@ export const command = `bash "$HOME/Library/Application Support/Übersicht/widge
 export const refreshFrequency = 8000;
 const SLIDE_SEC = 20;
 
+// 背景：true = 纯黑，完全不透出壁纸/桌面小组件；false = 有图时用模糊大图做氛围背景（半透明）
+const SOLID_BG = true;
+
 // ── Path → file:// URL (encodeURI preserves / but encodes 中文 & Ü etc.) ─────
 const fileUrl = (path) => encodeURI("file://" + (path || ""));
 
@@ -163,7 +166,7 @@ export const render = ({ output, error }) => {
 
       {/* Ambient bg: blurred slide */}
       <div style={{ position:"absolute", inset:0, zIndex:0, overflow:"hidden" }}>
-        {slideUrl && (
+        {!SOLID_BG && slideUrl && (
           <img src={slideUrl} style={{
             position:"absolute", top:"-10%", left:"-10%",
             width:"120%", height:"120%", objectFit:"cover",
@@ -173,7 +176,8 @@ export const render = ({ output, error }) => {
         )}
         <div style={{
           position:"absolute", inset:0,
-          background:"linear-gradient(135deg,rgba(4,8,18,0.88) 0%,rgba(4,7,16,0.94) 100%)",
+          background: SOLID_BG ? "#000"
+            : "linear-gradient(135deg,rgba(4,8,18,0.88) 0%,rgba(4,7,16,0.94) 100%)",
         }} />
       </div>
 
@@ -284,6 +288,7 @@ export const render = ({ output, error }) => {
 const root = css`
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=JetBrains+Mono:wght@300;400&family=Inter:wght@300;400;500&display=swap');
   position: fixed; inset: 0;
+  background: #000;
   display: flex; flex-direction: row; align-items: flex-start;
   gap: 12px; padding: 14px; box-sizing: border-box;
   font-family: 'Inter', sans-serif;
@@ -292,7 +297,7 @@ const root = css`
 `;
 
 const card = css`
-  background: rgba(8,13,24,0.62);
+  background: rgba(16,22,36,0.9);
   backdrop-filter: blur(28px) saturate(160%);
   -webkit-backdrop-filter: blur(28px) saturate(160%);
   border: 1px solid rgba(255,255,255,0.08);
@@ -324,7 +329,7 @@ const slideOuter = css`
   border-radius: 16px; overflow: hidden;
   border: 1px solid rgba(255,255,255,0.08);
   box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-  background: rgba(8,13,24,0.62);
+  background: rgba(16,22,36,0.9);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
 `;

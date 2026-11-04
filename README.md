@@ -7,6 +7,7 @@
 | 状态 | v0.1.0 — 2026-03 完成，按个人使用需求实现，**不再主动开发** |
 | 环境 | macOS + [Übersicht](https://tracesof.net/uebersicht/) |
 | 依赖 | 无第三方库（bash + AppleScript + 系统自带 `python3`）；字体走 Google Fonts CDN，不可达时回退系统字体 |
+| 背景 | 纯黑，不透视壁纸与桌面小组件（`SOLID_BG` 可切回模糊大图氛围背景） |
 | 许可 | MIT |
 
 
@@ -16,6 +17,7 @@
 - 🎵 **Now Playing** — 专辑封面 + 歌名 + 歌手 + 专辑名 + 音频可视化条
   - 支持 Apple Music / Spotify
 - 📊 **系统状态** — CPU / 内存 / 磁盘（带进度条）/ 网络收发量
+- 🖼 **全屏轮播** — `slideshow/` 里的图片按 `SLIDE_SEC` 轮播（自带 4 张示例图）
 
 ---
 
@@ -55,6 +57,20 @@ chmod +x \
 然后：菜单栏 Übersicht 图标 → **Refresh All Widgets**。
 定位到副屏：右键组件 → **Edit Position**，拖到副屏合适位置。
 
+## 背景与轮播图
+
+背景默认纯黑：组件盖满整屏，壁纸和 macOS 桌面小组件都不会透出来。这套半透明玻璃卡片的观感依赖黑色底衬，所以纯黑是默认值。
+
+`slideshow/` 里有 4 张内置示例图（`example-01-aurora` / `02-ember` / `03-ocean` / `04-slate`），是程序生成的抽象渐变，可以直接换成你自己的照片：
+
+```bash
+cp ~/Pictures/*.jpg "$HOME/Library/Application Support/Übersicht/widgets/ambient-dashboard/slideshow/"
+```
+
+- 横向图观感最好（≥1600×900），竖图会被 `object-fit: cover` 裁切
+- 放进去不用重装，Übersicht 下次刷新就会轮播
+- 支持 jpg / jpeg / png / webp / gif / avif / heic / tiff / bmp
+
 ## 可调项
 
 组件没有配置块，尺寸是全屏自适应（`position: fixed; inset: 0`），换显示器不用改任何东西。
@@ -64,6 +80,7 @@ chmod +x \
 |---|---|---|---|
 | 第 9 行 | `refreshFrequency` | `8000` | 采集脚本执行间隔（ms）。时钟数字也受它控制——改成 `1000` 才是真正的秒级走字，代价是每秒起一个 `get-data.sh` 进程 |
 | 第 10 行 | `SLIDE_SEC` | `20` | 轮播每张图停留的秒数 |
+| 第 13 行 | `SOLID_BG` | `true` | `true` = 背景纯黑，完全遮住壁纸与桌面小组件；`false` = 用当前轮播图做模糊氛围背景（半透明，桌面会透出来） |
 
 副屏分辨率不同也不影响布局；如果确实想让左侧卡片变宽，改 `leftPanel` 的 `width: 265px`。
 

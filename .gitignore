@@ -8,3 +8,6 @@
 
 # 截图要能进仓库（*.png 默认忽略）
 !docs/screenshot.png
+
+# 示例轮播图要能进仓库
+!slideshow/example-*.jpg
